@@ -1,0 +1,11 @@
+# Node modules
+node_modules/
+
+# Gatsby files
+.cache/
+public/
+
+# dotenv environment files
+# .env
+# .env.*.local
+
