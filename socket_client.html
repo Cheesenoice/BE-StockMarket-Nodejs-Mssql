@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Socket.IO Bảng Giá</title>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  </head>
+  <body>
+    <h1>Bảng Giá Trực Tuyến</h1>
+    <div id="priceBoard"></div>
+    <script>
+      const socket = io("http://localhost:3000");
+
+      // Gửi thông tin xác thực khi kết nối
+      socket.emit("auth", {
+        username: "NDT001",
+        password: "password123",
+      });
+
+      // Nhận cập nhật bảng giá
+      socket.on("bangGiaUpdate", (data) => {
+        console.log("Cập nhật bảng giá:", data);
+        const priceBoard = document.getElementById("priceBoard");
+        priceBoard.innerHTML =
+          "<pre>" + JSON.stringify(data, null, 2) + "</pre>";
+      });
+
+      // Xử lý lỗi
+      socket.on("error", (err) => {
+        console.error("Lỗi:", err.message);
+        alert(err.message);
+      });
+
+      // Yêu cầu cập nhật bảng giá
+      document.addEventListener("DOMContentLoaded", () => {
+        setTimeout(() => {
+          socket.emit("requestPriceBoard");
+        }, 1000);
+      });
+    </script>
+  </body>
+</html>
