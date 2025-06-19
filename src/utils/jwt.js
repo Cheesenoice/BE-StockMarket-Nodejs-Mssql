@@ -1,12 +1,12 @@
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
-const generateToken = (user) => {
-  if (!user.username || !user.password || !user.role) {
-    throw new Error("Thiếu thông tin user để tạo token.");
+const generateToken = (username) => {
+  if (!username) {
+    throw new Error("Thiếu username để tạo token.");
   }
-  console.log("Tạo token với payload:", user); // Debug payload
-  return jwt.sign(user, process.env.JWT_SECRET, {
+  console.log("Tạo token với payload:", { username }); // Debug payload
+  return jwt.sign({ username }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN,
   });
 };

@@ -22,8 +22,8 @@ const login = async ({ username, password }) => {
       throw new Error("Không tìm thấy role hợp lệ.");
     }
 
-    // Tạo JWT
-    const token = generateToken({ username, password, role });
+    // Tạo JWT chỉ với username
+    const token = generateToken(username);
     return { success: true, token, role };
   } catch (err) {
     console.error("Lỗi đăng nhập:", err);

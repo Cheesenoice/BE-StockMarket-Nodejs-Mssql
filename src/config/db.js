@@ -1,6 +1,10 @@
 const sql = require("mssql");
 require("dotenv").config();
 
+// DB_USER, DB_PASS không còn dùng, lấy từ session khi login
+// Thêm SESSION_SECRET vào .env, ví dụ:
+// SESSION_SECRET=your_secret_here
+
 const dbConfig = (username, password) => {
   if (!username || !password) {
     throw new Error("Thiếu tên đăng nhập hoặc mật khẩu để kết nối database.");

@@ -4,13 +4,11 @@ const authMiddleware = (requiredRole) => (req, res, next) => {
   // Kiểm tra header Authorization
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res
-      .status(401)
-      .json({
-        success: false,
-        message:
-          "Thiếu hoặc sai định dạng header Authorization. Cần định dạng: Bearer <token>",
-      });
+    return res.status(401).json({
+      success: false,
+      message:
+        "Thiếu hoặc sai định dạng header Authorization. Cần định dạng: Bearer <token>",
+    });
   }
 
   const token = authHeader.split(" ")[1];
@@ -20,23 +18,25 @@ const authMiddleware = (requiredRole) => (req, res, next) => {
 
   try {
     const decoded = verifyToken(token);
-    if (!decoded.username || !decoded.password || !decoded.role) {
-      return res
-        .status(401)
-        .json({
-          success: false,
-          message: "Token không chứa đủ thông tin (username, password, role).",
-        });
+    if (!decoded.username) {
+      return res.status(401).json({
+        success: false,
+        message: "Token không chứa username.",
+      });
     }
 
-    req.user = decoded;
-
-    if (requiredRole && decoded.role !== requiredRole) {
-      return res
-        .status(403)
-        .json({ success: false, message: "Không có quyền truy cập." });
+    // Lấy username/password từ session
+    const { username, password } = req.session;
+    if (!username || !password || username !== decoded.username) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Session không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.",
+      });
     }
 
+    req.user = { username, password };
+    // Nếu cần kiểm tra role, có thể lấy role từ DB hoặc session nếu đã lưu
     next();
   } catch (err) {
     console.error("Lỗi xác thực token:", err);
