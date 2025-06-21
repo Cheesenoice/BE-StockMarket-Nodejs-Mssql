@@ -1,21 +1,27 @@
 const { sql, connectDB } = require("../config/db");
 const { generateToken } = require("../utils/jwt");
 
-const login = async ({ username, password }) => {
+const login = async ({ username, password }, session) => {
   try {
+    // Kiểm tra xem user đã đăng nhập chưa (có session không)
+    if (session && session.username === username) {
+      // User đã đăng nhập, trả về thông báo đã đăng nhập
+      return {
+        success: true,
+        message: "Bạn đã đăng nhập rồi.",
+        alreadyLoggedIn: true,
+        username: username,
+      };
+    }
+
     // Kết nối SQL Server với thông tin đăng nhập từ client
     const pool = await connectDB(username, password);
 
-    // Lấy thông tin role
+    // Lấy thông tin role bằng stored procedure
     const result = await pool
       .request()
-      .input("username", sql.NVarChar, username).query(`
-                SELECT r.name AS role
-                FROM sys.database_principals u
-                JOIN sys.database_role_members rm ON u.principal_id = rm.member_principal_id
-                JOIN sys.database_principals r ON rm.role_principal_id = r.principal_id
-                WHERE u.name = @username
-            `);
+      .input("username", sql.NVarChar, username)
+      .execute("sp_GetUserRole");
 
     const role = result.recordset[0]?.role || null;
     if (!role || !["NhanVien", "NhaDauTu"].includes(role)) {

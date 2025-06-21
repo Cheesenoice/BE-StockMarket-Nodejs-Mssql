@@ -3,34 +3,244 @@
   <head>
     <title>Socket.IO Bảng Giá</title>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+      body {
+        font-family: "Segoe UI", sans-serif;
+        background-color: #0e1111;
+        color: #ffffff;
+        margin: 20px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        background-color: #1a1d1f;
+        font-size: 14px;
+      }
+
+      th,
+      td {
+        border: 1px solid #2b2f31;
+        padding: 8px;
+        text-align: center;
+      }
+
+      th {
+        background-color: #2b2f31;
+        color: #fff;
+        font-weight: bold;
+      }
+
+      .gia-tran {
+        color: #ff00ff;
+      }
+
+      .gia-san {
+        color: #00ffff;
+      }
+
+      .gia-tc {
+        color: #ffd700;
+      }
+
+      .gia-tang {
+        color: #00ff00;
+      }
+
+      .gia-giam {
+        color: #ff4040;
+      }
+
+      .gia-khongdoi {
+        color: #ffffff;
+      }
+
+      .buy-flash {
+        animation: flashBuy 0.8s ease-in-out;
+      }
+      .sell-flash {
+        animation: flashSell 0.8s ease-in-out;
+      }
+
+      @keyframes flashBuy {
+        0% {
+          background-color: #003300;
+        }
+        50% {
+          background-color: #00cc00;
+        }
+        100% {
+          background-color: transparent;
+        }
+      }
+
+      @keyframes flashSell {
+        0% {
+          background-color: #330000;
+        }
+        50% {
+          background-color: #ff4444;
+        }
+        100% {
+          background-color: transparent;
+        }
+      }
+    </style>
   </head>
   <body>
     <h1>Bảng Giá Trực Tuyến</h1>
-    <div id="priceBoard"></div>
+    <table id="priceBoard">
+      <thead>
+        <tr>
+          <th>Mã CP</th>
+          <th>Giá Trần</th>
+          <th>Giá Sàn</th>
+          <th>Giá TC</th>
+          <th>Giá Mua 1</th>
+          <th>KL Mua 1</th>
+          <th>Giá Mua 2</th>
+          <th>KL Mua 2</th>
+          <th>Giá Mua 3</th>
+          <th>KL Mua 3</th>
+          <th>Giá Bán 1</th>
+          <th>KL Bán 1</th>
+          <th>Giá Bán 2</th>
+          <th>KL Bán 2</th>
+          <th>Giá Bán 3</th>
+          <th>KL Bán 3</th>
+          <th>Giá Khớp</th>
+          <th>KL Khớp</th>
+        </tr>
+      </thead>
+      <tbody id="priceBoardBody"></tbody>
+    </table>
+    <div id="error"></div>
     <script>
       const socket = io("http://localhost:3000");
+      let previousData = {};
 
       // Gửi thông tin xác thực khi kết nối
       socket.emit("auth", {
         username: "NDT001",
-        password: "password123",
+        password: "12345678",
       });
+
+      // Hàm xác định class màu cho giá
+      function getGiaClass(gia, giaTC, giaTran, giaSan) {
+        if (gia == null) return "";
+        if (gia === giaTC) return "gia-tc"; // Vàng
+        if (gia === giaTran) return "gia-tran"; // Tím
+        if (gia === giaSan) return "gia-san"; // Xanh lơ
+        if (gia > giaTC) return "gia-tang"; // Xanh lá
+        if (gia < giaTC) return "gia-giam"; // Đỏ
+        return "gia-khongdoi"; // Trắng
+      }
+
+      // Hàm hiển thị bảng giá
+      function renderPriceBoard(data) {
+        const tbody = document.getElementById("priceBoardBody");
+        tbody.innerHTML = "";
+
+        data.forEach((item) => {
+          const row = document.createElement("tr");
+          row.setAttribute("data-maCP", item.MaCP);
+
+          // Kiểm tra thay đổi để áp dụng hiệu ứng chớp
+          const prevItem = previousData[item.MaCP] || {};
+          const buyChanged =
+            prevItem.GiaMua1 !== item.GiaMua1 ||
+            prevItem.SoLuongMua1 !== item.SoLuongMua1;
+          const sellChanged =
+            prevItem.GiaBan1 !== item.GiaBan1 ||
+            prevItem.SoLuongBan1 !== item.SoLuongBan1;
+
+          row.innerHTML = `
+                    <td>${item.MaCP}</td>
+                    <td class="gia-tran">${item.GiaTran}</td>
+                    <td class="gia-san">${item.GiaSan}</td>
+                    <td class="gia-tc">${item.GiaTC}</td>
+                    <td class="${getGiaClass(
+                      item.GiaMua1,
+                      item.GiaTC,
+                      item.GiaTran,
+                      item.GiaSan
+                    )} ${buyChanged ? "buy-flash" : ""}">${
+            item.GiaMua1 ?? ""
+          }</td>
+                    <td class="${buyChanged ? "buy-flash" : ""}">${
+            item.SoLuongMua1 ?? ""
+          }</td>
+                    <td class="${getGiaClass(
+                      item.GiaMua2,
+                      item.GiaTC,
+                      item.GiaTran,
+                      item.GiaSan
+                    )}">${item.GiaMua2 ?? ""}</td>
+                    <td>${item.SoLuongMua2 ?? ""}</td>
+                    <td class="${getGiaClass(
+                      item.GiaMua3,
+                      item.GiaTC,
+                      item.GiaTran,
+                      item.GiaSan
+                    )}">${item.GiaMua3 ?? ""}</td>
+                    <td>${item.SoLuongMua3 ?? ""}</td>
+                    <td class="${getGiaClass(
+                      item.GiaBan1,
+                      item.GiaTC,
+                      item.GiaTran,
+                      item.GiaSan
+                    )} ${sellChanged ? "sell-flash" : ""}">${
+            item.GiaBan1 ?? ""
+          }</td>
+                    <td class="${sellChanged ? "sell-flash" : ""}">${
+            item.SoLuongBan1 ?? ""
+          }</td>
+                    <td class="${getGiaClass(
+                      item.GiaBan2,
+                      item.GiaTC,
+                      item.GiaTran,
+                      item.GiaSan
+                    )}">${item.GiaBan2 ?? ""}</td>
+                    <td>${item.SoLuongBan2 ?? ""}</td>
+                    <td class="${getGiaClass(
+                      item.GiaBan3,
+                      item.GiaTC,
+                      item.GiaTran,
+                      item.GiaSan
+                    )}">${item.GiaBan3 ?? ""}</td>
+                    <td>${item.SoLuongBan3 ?? ""}</td>
+                    <td class="${getGiaClass(
+                      item.GiaKhop,
+                      item.GiaTC,
+                      item.GiaTran,
+                      item.GiaSan
+                    )}">${item.GiaKhop ?? ""}</td>
+                    <td>${item.SoLuongKhop ?? ""}</td>
+                `;
+          tbody.appendChild(row);
+        });
+
+        // Cập nhật dữ liệu trước đó
+        previousData = {};
+        data.forEach((item) => {
+          previousData[item.MaCP] = { ...item };
+        });
+      }
 
       // Nhận cập nhật bảng giá
       socket.on("bangGiaUpdate", (data) => {
         console.log("Cập nhật bảng giá:", data);
-        const priceBoard = document.getElementById("priceBoard");
-        priceBoard.innerHTML =
-          "<pre>" + JSON.stringify(data, null, 2) + "</pre>";
+        renderPriceBoard(data);
       });
 
       // Xử lý lỗi
       socket.on("error", (err) => {
         console.error("Lỗi:", err.message);
-        alert(err.message);
+        document.getElementById("error").innerText = `Lỗi: ${err.message}`;
       });
 
-      // Yêu cầu cập nhật bảng giá
+      // Yêu cầu cập nhật bảng giá khi tải trang
       document.addEventListener("DOMContentLoaded", () => {
         setTimeout(() => {
           socket.emit("requestPriceBoard");
