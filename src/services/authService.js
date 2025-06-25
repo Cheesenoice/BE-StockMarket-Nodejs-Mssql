@@ -17,20 +17,22 @@ const login = async ({ username, password }, session) => {
     // Kết nối SQL Server với thông tin đăng nhập từ client
     const pool = await connectDB(username, password);
 
-    // Lấy thông tin role bằng stored procedure
+    // Gọi stored procedure sp_DangNhap
     const result = await pool
       .request()
-      .input("username", sql.NVarChar, username)
-      .execute("sp_GetUserRole");
+      .input("TENLOGIN", sql.NVarChar, username)
+      .execute("sp_DangNhap");
 
-    const role = result.recordset[0]?.role || null;
-    if (!role || !["NhanVien", "NhaDauTu"].includes(role)) {
+    const userInfo = result.recordset[0];
+    const role = userInfo?.TENNHOM || null;
+    const maNDT = userInfo?.MANDT || null;
+    if (!role || !["nhanvien", "nhadautu"].includes(role)) {
       throw new Error("Không tìm thấy role hợp lệ.");
     }
 
-    // Tạo JWT chỉ với username
-    const token = generateToken(username);
-    return { success: true, token, role };
+    // Tạo JWT với username, password, role và MaNDT (id)
+    const token = generateToken(username, password, role, maNDT);
+    return { success: true, token, role, info: userInfo };
   } catch (err) {
     console.error("Lỗi đăng nhập:", err);
     throw new Error("Tên đăng nhập hoặc mật khẩu không đúng.");

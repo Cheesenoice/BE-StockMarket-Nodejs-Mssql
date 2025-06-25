@@ -27,42 +27,4 @@ const login = async (req, res) => {
   }
 };
 
-const logout = async (req, res) => {
-  try {
-    const username = req.session.username;
-
-    if (username) {
-      // Đóng connection pool cho user này
-      await closeConnection(username);
-
-      // Xóa session
-      req.session.destroy((err) => {
-        if (err) {
-          console.error("Lỗi khi xóa session:", err);
-          return res.status(500).json({
-            success: false,
-            message: "Lỗi khi đăng xuất.",
-          });
-        }
-
-        res.status(200).json({
-          success: true,
-          message: "Đăng xuất thành công.",
-        });
-      });
-    } else {
-      res.status(200).json({
-        success: true,
-        message: "Bạn chưa đăng nhập.",
-      });
-    }
-  } catch (err) {
-    console.error("Lỗi đăng xuất:", err);
-    res.status(500).json({
-      success: false,
-      message: "Lỗi khi đăng xuất.",
-    });
-  }
-};
-
-module.exports = { login, logout };
+module.exports = { login };

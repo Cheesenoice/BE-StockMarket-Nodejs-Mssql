@@ -1,0 +1,154 @@
+-- =============================
+--  DATABASE (PHIÊN BẢN CHỐT CUỐI)
+-- =============================
+
+-- Tạo database
+CREATE DATABASE QL_GiaoDichCoPhieu;
+GO
+
+USE QL_GiaoDichCoPhieu;
+GO
+
+-- 1.BẢNG NHÀ ĐẦU TƯ
+CREATE TABLE NHADAUTU (
+    MaNDT NCHAR(20) PRIMARY KEY,
+    HoTen NVARCHAR(50) NOT NULL,
+    NgaySinh DATE,
+    MKGD NVARCHAR(50) NOT NULL,     -- mật khẩu giao dịch
+    DiaChi NVARCHAR(100) NOT NULL,
+    Phone NVARCHAR(15) NOT NULL,
+    CMND NCHAR(10) NOT NULL UNIQUE,
+    GioiTinh NCHAR(5) CHECK (GioiTinh IN ('Nam', 'Nu')),
+    Email NVARCHAR(50)
+);
+
+-- 2.BẢNG NHÂN VIÊN
+CREATE TABLE NHANVIEN (
+    MaNV NCHAR(20) PRIMARY KEY,
+    HoTen NVARCHAR(50) NOT NULL,
+    NgaySinh DATE,
+    DiaChi NVARCHAR(100) NOT NULL,
+    Phone NVARCHAR(15) NOT NULL,
+    CMND NCHAR(10) NOT NULL UNIQUE,
+    GioiTinh NCHAR(5) CHECK (GioiTinh IN ('Nam', 'Nu')),
+    Email NVARCHAR(50)
+);
+
+-- 3.BẢNG NGÂN HÀNG
+CREATE TABLE NGANHANG (
+    MaNH NCHAR(20) PRIMARY KEY,
+    TenNH NVARCHAR(50) NOT NULL UNIQUE,
+    DiaChi NVARCHAR(100),
+    Phone NCHAR(10),
+    Email NVARCHAR(50)
+);
+
+-- 4.TÀI KHOẢN NGÂN HÀNG
+CREATE TABLE TAIKHOAN_NGANHANG (
+    MaTK NCHAR(20) PRIMARY KEY,
+    MaNDT NCHAR(20),
+    SoTien FLOAT CHECK (SoTien >= 0),
+    MaNH NCHAR(20),
+    FOREIGN KEY (MaNDT) REFERENCES NHADAUTU(MaNDT),
+    FOREIGN KEY (MaNH) REFERENCES NGANHANG(MaNH)
+);
+
+-- 5.CỔ PHIẾU
+CREATE TABLE COPHIEU (
+    MaCP NCHAR(10) PRIMARY KEY,
+    TenCty NVARCHAR(50) NOT NULL UNIQUE,
+    DiaChi NVARCHAR(100) NOT NULL,
+    SoLuongPH INT CHECK (SoLuongPH > 0),
+    IsDeleted BIT NOT NULL DEFAULT 0
+);
+
+-- 6.LỆNH ĐẶT
+CREATE TABLE LENHDAT (
+    MaGD INT PRIMARY KEY IDENTITY(1,1),
+    NgayGD DATETIME DEFAULT GETDATE(),
+    LoaiGD CHAR(1) CHECK (LoaiGD IN ('M', 'B')),
+    LoaiLenh NCHAR(5) CHECK (LoaiLenh IN ('LO', 'ATO', 'ATC')),
+    SoLuong INT,
+    MaCP NCHAR(10),
+    Gia FLOAT,
+    MaTK NCHAR(20),
+    TrangThai NVARCHAR(20) CHECK (TrangThai IN ('Huy', 'Chua', 'MotPhan', 'Het', 'Cho')),
+    FOREIGN KEY (MaCP) REFERENCES COPHIEU(MaCP),
+    FOREIGN KEY (MaTK) REFERENCES TAIKHOAN_NGANHANG(MaTK)
+);
+
+-- 7.LỊCH SỬ GIAO DỊCH TIỀN
+CREATE TABLE LICHSU_TIEN (
+    MaLS INT PRIMARY KEY IDENTITY(1,1),
+    MaTK NCHAR(20),
+    MaGD INT NULL,
+    NgayGD DATETIME DEFAULT GETDATE(),
+    SoDuTruoc FLOAT,
+    SoTienPhatSinh FLOAT,
+    LyDo NVARCHAR(255),
+    SoDuSau FLOAT,
+    FOREIGN KEY (MaTK) REFERENCES TAIKHOAN_NGANHANG(MaTK),
+    FOREIGN KEY (MaGD) REFERENCES LENHDAT(MaGD)
+);
+
+-- 8.LỆNH KHỚP
+CREATE TABLE LENHKHOP (
+    MaLK INT PRIMARY KEY IDENTITY(1,1),
+    MaGD INT NOT NULL,
+    NgayGioKhop DATETIME DEFAULT GETDATE(),
+    SoLuongKhop INT CHECK (SoLuongKhop > 0),
+    GiaKhop FLOAT,
+    KieuKhop NVARCHAR(50) CHECK (KieuKhop IN ('KhopMotPhan', 'KhopHet')),
+    MaCP NCHAR(10),
+    FOREIGN KEY (MaGD) REFERENCES LENHDAT(MaGD),
+    FOREIGN KEY (MaCP) REFERENCES COPHIEU(MaCP)
+);
+
+-- 9.BẢNG GIÁ TRỰC TUYẾN
+CREATE TABLE BANGGIATRUCTUYEN (
+    MaCP NCHAR(10) PRIMARY KEY,
+    GiaTran FLOAT,
+    GiaSan FLOAT,
+    GiaTC FLOAT,
+    GiaMua1 FLOAT, SoLuongMua1 INT,
+    GiaMua2 FLOAT, SoLuongMua2 INT,
+    GiaMua3 FLOAT, SoLuongMua3 INT,
+    GiaBan1 FLOAT, SoLuongBan1 INT,
+    GiaBan2 FLOAT, SoLuongBan2 INT,
+    GiaBan3 FLOAT, SoLuongBan3 INT,
+    GiaKhop FLOAT,
+    SoLuongKhop INT,
+    FOREIGN KEY (MaCP) REFERENCES COPHIEU(MaCP)
+);
+
+-- 10.SỞ HỮU
+CREATE TABLE SOHUU (
+    MaNDT NCHAR(20),
+    MaCP NCHAR(10),
+    SoLuong INT CHECK (SoLuong >= 0),
+    PRIMARY KEY (MaNDT, MaCP),
+    FOREIGN KEY (MaNDT) REFERENCES NHADAUTU(MaNDT),
+    FOREIGN KEY (MaCP) REFERENCES COPHIEU(MaCP)
+);
+
+-- 11.LỊCH SỬ GIÁ
+CREATE TABLE LICHSUGIA (
+    MaCP NCHAR(10),
+    Ngay DATETIME,
+    GiaTran FLOAT,
+    GiaSan FLOAT,
+    GiaTC FLOAT,
+    PRIMARY KEY (MaCP, Ngay),
+    FOREIGN KEY (MaCP) REFERENCES COPHIEU(MaCP)
+);
+
+-- 13.BẢNG GIÁ PHIÊN
+-- Bảng này lưu trữ giá mở cửa và giá đóng cửa của cổ phiếu theo ngày.
+CREATE TABLE GIATRI_PHIEN (
+    MaCP NCHAR(10),
+    Ngay DATE,
+    GiaMoCua FLOAT,
+    GiaDongCua FLOAT,
+    PRIMARY KEY (MaCP, Ngay),
+    FOREIGN KEY (MaCP) REFERENCES COPHIEU(MaCP)
+);
