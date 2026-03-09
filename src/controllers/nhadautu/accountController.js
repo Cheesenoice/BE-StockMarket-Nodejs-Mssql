@@ -115,6 +115,61 @@ const getAllBanks = async (req, res) => {
   }
 };
 
+const napTien = async (req, res) => {
+  try {
+    const { id: maTK } = req.params;
+    const { soTien, mkgd } = req.body;
+    if (!maTK || !soTien || !mkgd) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Thiếu thông tin." });
+    }
+    const result = await accountService.napTien(req.user, {
+      maTK,
+      soTien,
+      mkgd,
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+const rutTien = async (req, res) => {
+  try {
+    const { id: maTK } = req.params;
+    const { soTien, mkgd } = req.body;
+    if (!maTK || !soTien || !mkgd) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Thiếu thông tin." });
+    }
+    const result = await accountService.rutTien(req.user, {
+      maTK,
+      soTien,
+      mkgd,
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+const doiMatKhauGiaoDich = async (req, res) => {
+  try {
+    const { mkgd } = req.body;
+    if (!mkgd) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Thiếu mật khẩu giao dịch mới." });
+    }
+    const result = await accountService.doiMatKhauGiaoDich(req.user, { mkgd });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 module.exports = {
   getMyAccounts,
   getAccountDetailById,
@@ -124,4 +179,7 @@ module.exports = {
   addAccountForNDT,
   deleteAccountForNDT,
   getAllBanks,
+  napTien,
+  rutTien,
+  doiMatKhauGiaoDich,
 };

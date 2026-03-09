@@ -17,5 +17,15 @@ router.delete(
 );
 router.post("/stocks/undo", authMiddleware("nhanvien"), stockController.undo);
 router.post("/stocks/redo", authMiddleware("nhanvien"), stockController.redo);
+router.post(
+  "/stocks/:maCP/niem-yet",
+  authMiddleware("nhanvien"),
+  stockController.niemYetCoPhieu
+);
+router.delete(
+  "/stocks/:maCP/niem-yet",
+  authMiddleware("nhanvien"),
+  stockController.goNiemYetCoPhieu
+);
 
 module.exports = router;

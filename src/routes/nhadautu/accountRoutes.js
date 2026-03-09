@@ -47,4 +47,22 @@ router.delete(
 
 router.get("/banks", authMiddleware("nhadautu"), accountController.getAllBanks);
 
+router.post(
+  "/accounts/:id/nap-tien",
+  authMiddleware("nhadautu"),
+  accountController.napTien
+);
+
+router.post(
+  "/accounts/:id/rut-tien",
+  authMiddleware("nhadautu"),
+  accountController.rutTien
+);
+
+router.post(
+  "/doi-mat-khau-giao-dich",
+  authMiddleware("nhadautu"),
+  accountController.doiMatKhauGiaoDich
+);
+
 module.exports = router;

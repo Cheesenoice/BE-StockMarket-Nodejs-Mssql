@@ -174,6 +174,52 @@ const redo = async (user) => {
   return result;
 };
 
+const niemYetCoPhieu = async (user, { MaCP, GiaTC, BienDo = 0.07 }) => {
+  if (!user || !user.username || !user.password) {
+    throw new Error("Thông tin xác thực user không hợp lệ.");
+  }
+  const pool = await connectDB(user.username, user.password);
+  try {
+    await pool
+      .request()
+      .input("MaCP", sql.NChar, MaCP)
+      .input("GiaTC", sql.Float, GiaTC)
+      .input("BienDo", sql.Float, BienDo)
+      .execute("sp_NiemYetCoPhieu");
+    return { success: true, message: "Niêm yết cổ phiếu thành công" };
+  } catch (err) {
+    throw new Error(
+      err.originalError &&
+      err.originalError.info &&
+      err.originalError.info.message
+        ? err.originalError.info.message
+        : err.message
+    );
+  }
+};
+
+const goNiemYetCoPhieu = async (user, MaCP) => {
+  if (!user || !user.username || !user.password) {
+    throw new Error("Thông tin xác thực user không hợp lệ.");
+  }
+  const pool = await connectDB(user.username, user.password);
+  try {
+    await pool
+      .request()
+      .input("MaCP", sql.NChar, MaCP)
+      .execute("sp_GoNiemYetCoPhieu");
+    return { success: true, message: "Gỡ niêm yết cổ phiếu thành công" };
+  } catch (err) {
+    throw new Error(
+      err.originalError &&
+      err.originalError.info &&
+      err.originalError.info.message
+        ? err.originalError.info.message
+        : err.message
+    );
+  }
+};
+
 module.exports = {
   getAllStocks,
   addStock,
@@ -181,4 +227,6 @@ module.exports = {
   deleteStock,
   undo,
   redo,
+  niemYetCoPhieu,
+  goNiemYetCoPhieu,
 };

@@ -77,6 +77,42 @@ const redo = async (req, res) => {
   }
 };
 
+const niemYetCoPhieu = async (req, res) => {
+  try {
+    const { maCP } = req.params;
+    const { GiaTC, BienDo } = req.body;
+    if (!maCP || !GiaTC) {
+      return res.status(400).json({
+        success: false,
+        message: "Thiếu mã cổ phiếu hoặc giá tham chiếu.",
+      });
+    }
+    const result = await stockService.niemYetCoPhieu(req.user, {
+      MaCP: maCP,
+      GiaTC,
+      BienDo,
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+const goNiemYetCoPhieu = async (req, res) => {
+  try {
+    const { maCP } = req.params;
+    if (!maCP) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Thiếu mã cổ phiếu." });
+    }
+    const result = await stockService.goNiemYetCoPhieu(req.user, maCP);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 module.exports = {
   getAllStocks,
   addStock,
@@ -84,4 +120,6 @@ module.exports = {
   deleteStock,
   undo,
   redo,
+  niemYetCoPhieu,
+  goNiemYetCoPhieu,
 };

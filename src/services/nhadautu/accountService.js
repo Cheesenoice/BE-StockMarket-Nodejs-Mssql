@@ -230,6 +230,79 @@ const getAllBanks = async (user) => {
   });
 };
 
+const napTien = async (user, { maTK, soTien, mkgd }) => {
+  if (!user || !user.username || !user.password || !user.id) {
+    throw new Error("Thông tin xác thực user không hợp lệ.");
+  }
+  const pool = await connectDB(user.username, user.password);
+  try {
+    await pool
+      .request()
+      .input("InputMaNDT", sql.NChar, user.id)
+      .input("InputMaTK", sql.NChar, maTK)
+      .input("InputSoTien", sql.Float, soTien)
+      .input("InputMKGD", sql.NVarChar, mkgd)
+      .execute("sp_NapTien");
+    return { success: true, message: "Nạp tiền thành công" };
+  } catch (err) {
+    throw new Error(
+      err.originalError &&
+      err.originalError.info &&
+      err.originalError.info.message
+        ? err.originalError.info.message
+        : err.message
+    );
+  }
+};
+
+const rutTien = async (user, { maTK, soTien, mkgd }) => {
+  if (!user || !user.username || !user.password || !user.id) {
+    throw new Error("Thông tin xác thực user không hợp lệ.");
+  }
+  const pool = await connectDB(user.username, user.password);
+  try {
+    await pool
+      .request()
+      .input("InputMaNDT", sql.NChar, user.id)
+      .input("InputMaTK", sql.NChar, maTK)
+      .input("InputSoTien", sql.Float, soTien)
+      .input("InputMKGD", sql.NVarChar, mkgd)
+      .execute("sp_RutTien");
+    return { success: true, message: "Rút tiền thành công" };
+  } catch (err) {
+    throw new Error(
+      err.originalError &&
+      err.originalError.info &&
+      err.originalError.info.message
+        ? err.originalError.info.message
+        : err.message
+    );
+  }
+};
+
+const doiMatKhauGiaoDich = async (user, { mkgd }) => {
+  if (!user || !user.username || !user.password || !user.id) {
+    throw new Error("Thông tin xác thực user không hợp lệ.");
+  }
+  const pool = await connectDB(user.username, user.password);
+  try {
+    await pool
+      .request()
+      .input("InputMaNDT", sql.NChar, user.id)
+      .input("InputMKGD", sql.NVarChar, mkgd)
+      .execute("sp_DoiMatKhauGiaoDich");
+    return { success: true, message: "Đổi mật khẩu giao dịch thành công" };
+  } catch (err) {
+    throw new Error(
+      err.originalError &&
+      err.originalError.info &&
+      err.originalError.info.message
+        ? err.originalError.info.message
+        : err.message
+    );
+  }
+};
+
 module.exports = {
   getAccountsByNDT,
   getAccountDetail,
@@ -240,4 +313,7 @@ module.exports = {
   addAccount,
   deleteAccount,
   getAllBanks,
+  napTien,
+  rutTien,
+  doiMatKhauGiaoDich,
 };
