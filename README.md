@@ -1,114 +1,116 @@
 # Stock Realtime Backend (Node.js + MSSQL)
 
-Backend API cho hệ thống giao dịch chứng khoán realtime.
+[Tiếng Việt](./README.vi.md) | **English**
 
-Điểm cốt lõi của project này: **Node.js chỉ đóng vai trò API gateway**, còn phần nghiệp vụ quan trọng (xác thực SQL login, kiểm tra điều kiện đặt lệnh, khớp lệnh, cập nhật số dư, sao kê, bảng giá, backup/restore) được xử lý chủ yếu trong **Microsoft SQL Server** bằng **stored procedure + trigger + transaction**.
+Backend API for a realtime stock trading system.
 
-## 1. Kiến trúc tổng thể
+The core of this project: **Node.js acts only as an API gateway**, while important business logic (SQL login authentication, order placement conditions, order matching, balance updates, statements, price boards, backup/restore) is handled primarily within **Microsoft SQL Server** using **stored procedures + triggers + transactions**.
+
+## 1. Overall Architecture
 
 - Backend: `Node.js + Express + Socket.IO + mssql`.
-- CSDL: `SQL Server`.
-- Realtime: Socket.IO gọi SP lấy bảng giá định kỳ 5 giây.
-- Phân quyền: 2 nhóm nghiệp vụ chính `nhadautu` và `nhanvien`.
+- Database: `SQL Server`.
+- Realtime: Socket.IO calls SP to fetch the price board every 5 seconds.
+- Authorization: 2 main business roles: `nhadautu` (investor) and `nhanvien` (staff).
 
-Luồng xử lý:
+Processing flow:
 
-1. Client đăng nhập bằng SQL Login (`username/password`).
-2. Backend kết nối SQL Server bằng chính credential người dùng.
-3. Gọi `sp_DangNhap` để xác định vai trò.
-4. Cấp JWT và dùng middleware để bảo vệ route.
-5. Mọi nghiệp vụ giao dịch/chứng khoán gọi xuống stored procedure SQL Server.
+1. Client logs in using SQL Login (`username/password`).
+2. Backend connects to SQL Server using the user's own credentials.
+3. Calls `sp_DangNhap` to determine the role.
+4. Issues a JWT and uses middleware to protect routes.
+5. All trading/stock operations call down to SQL Server stored procedures.
 
-Sơ đồ kiến trúc tổng thể:
+Overall architecture diagram:
 
-![Kien truc tong the](github-assets/mermaid-architecture.png)
+![Overall Architecture](github-assets/mermaid-architecture.png)
 
-## 2. Cấu trúc mã nguồn
+## 2. Source Code Structure
 
 ```text
 src/
-  app.js                    # Khai báo middleware, route
-  index.js                  # Tạo HTTP server + Socket.IO
-  config/db.js              # Quản lý connection pool theo user đăng nhập
+  app.js                    # Middleware and route declarations
+  index.js                  # HTTP server + Socket.IO creation
+  config/db.js              # Connection pool management based on logged-in user
   middleware/authMiddleware.js
   utils/jwt.js
-  routes/                   # Router theo nhóm nhadautu/nhanvien
-  controllers/              # Validate input + gọi service
-  services/                 # Gọi stored procedure / query SQL
+  routes/                   # Routers grouped by nhadautu/nhanvien
+  controllers/              # Input validation + service calls
+  services/                 # SQL stored procedure calls / queries
   socket/priceBoardSocket.js
 ```
 
-Class diagram backend:
+Backend class diagram:
 
 ![Architecture Class Diagram](github-assets/architecture-class-diagram.png)
 
-## 3. MSSQL là lõi nghiệp vụ
+## 3. MSSQL as the Business Core
 
-Project sử dụng nhiều kiến thức lý thuyết MSSQL trong thực tế:
+This project utilizes various MSSQL theoretical concepts in practice:
 
-- Thiết kế quan hệ dữ liệu giao dịch: `LENHDAT`, `LENHKHOP`, `SOHUU`, `TAIKHOAN_NGANHANG`, `LICHSU_TIEN`, `BANGGIATRUCTUYEN`, `GIATRI_PHIEN`, `LICHSUGIA`.
-- Dùng `stored procedure` để đóng gói nghiệp vụ và kiểm soát nhất quán dữ liệu.
-- Dùng `trigger` để cưỡng chế rule (giá/khối lượng hợp lệ, cập nhật bảng giá top 3).
-- Dùng transaction/try-catch trong SP để đảm bảo tính toàn vẹn khi khớp lệnh.
-- Dùng role/login ở SQL Server để tách quyền theo nhóm người dùng.
-- Có module backup/restore và restore theo thời điểm (`point-in-time`) qua lệnh T-SQL.
+- Transaction data relationship design: `LENHDAT`, `LENHKHOP`, `SOHUU`, `TAIKHOAN_NGANHANG`, `LICHSU_TIEN`, `BANGGIATRUCTUYEN`, `GIATRI_PHIEN`, `LICHSUGIA`.
+- Use of `stored procedures` to encapsulate business logic and ensure data consistency.
+- Use of `triggers` to enforce rules (valid price/volume, updating top 3 price levels).
+- Use of transactions/try-catch in SPs to ensure integrity during order matching.
+- Use of roles/logins in SQL Server to separate permissions by user group.
+- Backup/restore module and point-in-time recovery via T-SQL commands.
 
-Sơ đồ ERD database:
+Database ERD:
 
-![ERD Database](github-assets/ERD.png)
+![Database ERD](github-assets/ERD.png)
 
-## 4. Cách setup MSSQL cho dự án
+## 4. Setting up MSSQL for the Project
 
-### 4.1 Tạo database và schema
+### 4.1 Creating Database and Schema
 
-- Script schema chính: `QL_GiaoDichCoPhieu.sql`.
-- Script nghiệp vụ khớp lệnh/trigger: `full.sql`, `sp_trg_LO.sql`.
+- Main schema script: `QL_GiaoDichCoPhieu.sql`.
+- Business matching/trigger scripts: `full.sql`, `sp_trg_LO.sql`.
 
-Thứ tự khuyến nghị:
+Recommended order:
 
-1. Chạy `QL_GiaoDichCoPhieu.sql` để tạo bảng.
-2. Chạy `full.sql` (hoặc script chuẩn bạn đang dùng) để tạo trigger/SP nghiệp vụ.
-3. Seed dữ liệu mẫu (nếu có script riêng trong môi trường của bạn).
+1. Run `QL_GiaoDichCoPhieu.sql` to create tables.
+2. Run `full.sql` (or your standard script) to create business logic triggers/SPs.
+3. Seed sample data (if a separate script is available in your environment).
 
-### 4.2 Setup SQL Login, User, Role (auth trong MSSQL)
+### 4.2 Setup SQL Login, User, Role (Auth in MSSQL)
 
-Backend hiện tại đăng nhập bằng SQL account, nên cần tạo login/user đúng chuẩn cho từng người dùng.
+The backend currently logs in using SQL accounts, so it is necessary to create logins/users for each user correctly.
 
-Ví dụ tối thiểu (tham khảo):
+Minimum example (for reference):
 
 ```sql
--- 1) Tạo login mức server
+-- 1) Create server-level login
 CREATE LOGIN NDT001 WITH PASSWORD = 'YourStrongPassword!123';
 CREATE LOGIN NV001 WITH PASSWORD = 'YourStrongPassword!123';
 
--- 2) Map vào database
+-- 2) Map to database
 USE QL_GiaoDichCoPhieu;
 GO
 CREATE USER NDT001 FOR LOGIN NDT001;
 CREATE USER NV001 FOR LOGIN NV001;
 
--- 3) Gán role theo mô hình của hệ thống
+-- 3) Assign roles based on system model
 CREATE ROLE nhadautu;
 CREATE ROLE nhanvien;
 ALTER ROLE nhadautu ADD MEMBER NDT001;
 ALTER ROLE nhanvien ADD MEMBER NV001;
 
--- 4) Cấp quyền EXEC SP theo vai trò (ví dụ)
+-- 4) Grant EXEC SP permissions by role (example)
 GRANT EXECUTE ON OBJECT::sp_DangNhap TO nhadautu;
 GRANT EXECUTE ON OBJECT::sp_DangNhap TO nhanvien;
 ```
 
-Lưu ý:
+Note:
 
-- Tên user/login nên đồng bộ với mã nghiệp vụ (`MaNDT`, `MaNV`) để map logic dễ hơn.
-- Trong code hiện tại, backend gọi `sp_DangNhap` và đọc `TENNHOM` để xác định role.
-- Các API quản trị người dùng có dùng `sys.database_principals` để kiểm tra tài khoản đã đăng ký trong DB hay chưa.
+- User/login names should sync with business codes (`MaNDT`, `MaNV`) for easier logic mapping.
+- In the current code, the backend calls `sp_DangNhap` and reads `TENNHOM` to determine the role.
+- User management APIs use `sys.database_principals` to check if the account is registered in the DB.
 
-## 5. Stored procedure và trigger chính
+## 5. Main Stored Procedures and Triggers
 
-### 5.1 Procedure khớp lệnh trong script SQL
+### 5.1 Matching Procedures in SQL Scripts
 
-Theo các file SQL hiện có (`full.sql`, `sp_trg_LO.sql`), các SP lõi gồm:
+According to existing SQL files (`full.sql`, `sp_trg_LO.sql`), core SPs include:
 
 - `sp_KiemTraDieuKienDatLenh`
 - `sp_DatLenhLO`
@@ -118,31 +120,31 @@ Theo các file SQL hiện có (`full.sql`, `sp_trg_LO.sql`), các SP lõi gồm:
 - `sp_DatLenh`
 - `sp_ProcessMatch`
 - `sp_XoaCoPhieu`
-- `sp_KhopLenhLienTuc` (trong `sp_trg_LO.sql`)
+- `sp_KhopLenhLienTuc` (in `sp_trg_LO.sql`)
 
-### 5.2 Trigger chính
+### 5.2 Main Triggers
 
-- `trg_LenhDat_Validate` hoặc `trg_LenhDat_ValidateRules`: kiểm tra rule giá/khối lượng.
-- `trg_LenhDat_UpdateBangGia`: cập nhật 3 mức giá mua/bán tốt nhất trên bảng giá realtime.
+- `trg_LenhDat_Validate` or `trg_LenhDat_ValidateRules`: checks price/volume rules.
+- `trg_LenhDat_UpdateBangGia`: updates the best 3 buy/sell price levels on the realtime board.
 
-### 5.3 Procedure backend Node.js đang gọi
+### 5.3 Procedures Called by Node.js Backend
 
-Từ code `src/services`, backend đang gọi các SP sau (cần tồn tại trong DB):
+From `src/services` code, the backend calls the following SPs (must exist in the DB):
 
 - Auth: `sp_DangNhap`
-- Nhà đầu tư: `sp_DatLenh`, `sp_HuyLenh`, `sp_GetAccountsByNDT`, `sp_TraCuuSoDu`, `sp_SaoKeGiaoDichLenh`, `sp_SaoKeLenhDatTheoMaCP`, `sp_SaoKeGiaoDichTien`, `sp_SaoKeLenhKhop`, `sp_ThemTaiKhoanNganHang`, `sp_NapTien`, `sp_RutTien`, `sp_DoiMatKhauGiaoDich`, `sp_XemGia`
-- Nhân viên: `sp_KhopLenhDinhKyFull`, `sp_TaoTaiKhoan`, `sp_XoaTaiKhoan`, `sp_DoiMatKhau`, `sp_ThemNhaDauTu`, `sp_XoaNhaDauTu`, `sp_ThemNhanVien`, `sp_XoaNhanVien`, `sp_NiemYetCoPhieu`, `sp_GoNiemYetCoPhieu`, `sp_XoaCoPhieu`
-- Realtime bảng giá: `sp_LayBangGiaTrucTuyen`
+- Investor: `sp_DatLenh`, `sp_HuyLenh`, `sp_GetAccountsByNDT`, `sp_TraCuuSoDu`, `sp_SaoKeGiaoDichLenh`, `sp_SaoKeLenhDatTheoMaCP`, `sp_SaoKeGiaoDichTien`, `sp_SaoKeLenhKhop`, `sp_ThemTaiKhoanNganHang`, `sp_NapTien`, `sp_RutTien`, `sp_DoiMatKhauGiaoDich`, `sp_XemGia`
+- Staff: `sp_KhopLenhDinhKyFull`, `sp_TaoTaiKhoan`, `sp_XoaTaiKhoan`, `sp_DoiMatKhau`, `sp_ThemNhaDauTu`, `sp_XoaNhaDauTu`, `sp_ThemNhanVien`, `sp_XoaNhanVien`, `sp_NiemYetCoPhieu`, `sp_GoNiemYetCoPhieu`, `sp_XoaCoPhieu`
+- Realtime price board: `sp_LayBangGiaTrucTuyen`
 
-## 6. Cài đặt và chạy backend Node.js
+## 6. Installation and Running Backend
 
 ```bash
 npm install
 ```
 
-### 6.1 Biến môi trường
+### 6.1 Environment Variables
 
-Tạo `.env`:
+Create `.env`:
 
 ```env
 PORT=3000
@@ -156,11 +158,11 @@ DB_DATABASE=QL_GiaoDichCoPhieu
 DB_PORT=1433
 ```
 
-Ghi chú:
+Notes:
 
-- `DB_USER/DB_PASS` không dùng cố định vì mỗi lần login backend dùng chính `username/password` từ người dùng SQL Server.
+- `DB_USER/DB_PASS` are not fixed because the backend uses the `username/password` from the SQL Server user for each login.
 
-### 6.2 Chạy server
+### 6.2 Running the Server
 
 ```bash
 # Development
@@ -170,17 +172,17 @@ npm run dev
 npm start
 ```
 
-Server mặc định chạy ở `http://localhost:3000`.
+The server runs by default at `http://localhost:3000`.
 
-## 7. Xác thực và phân quyền API
+## 7. Authentication and API Permissions
 
 - Login: `POST /api/auth/login`
-- Header bảo vệ route: `Authorization: Bearer <token>`
-- Middleware phân quyền theo role:
-  - `nhadautu` cho route `/api/nhadautu/*`
-  - `nhanvien` cho route `/api/nhanvien/*`
+- Route protection header: `Authorization: Bearer <token>`
+- Role-based authorization middleware:
+  - `nhadautu` for `/api/nhadautu/*` routes
+  - `nhanvien` for `/api/nhanvien/*` routes
 
-Ví dụ login:
+Login example:
 
 ```json
 {
@@ -189,16 +191,16 @@ Ví dụ login:
 }
 ```
 
-## 8. Nhóm API chính
+## 8. Main API Groups
 
-### 8.1 Nhà đầu tư (`/api/nhadautu`)
+### 8.1 Investor (`/api/nhadautu`)
 
-- Quản lý tài khoản ngân hàng, nạp/rút tiền, đổi mật khẩu giao dịch.
-- Đặt/hủy lệnh và xem lệnh chờ.
-- Tra cứu sao kê lệnh, sao kê tiền, sao kê khớp lệnh.
-- Tra cứu danh mục cổ phiếu và xem giá.
+- Manage bank accounts, deposit/withdraw money, change trading passwords.
+- Place/cancel orders and view pending orders.
+- Query order statements, cash statements, matching statements.
+- Query stock portfolios and view prices.
 
-Ví dụ đặt lệnh:
+Place order example:
 
 ```json
 {
@@ -213,42 +215,42 @@ Ví dụ đặt lệnh:
 }
 ```
 
-### 8.2 Nhân viên (`/api/nhanvien`)
+### 8.2 Staff (`/api/nhanvien`)
 
-- Quản trị user/login SQL và danh sách nhà đầu tư/nhân viên.
-- Quản trị cổ phiếu, niêm yết/gỡ niêm yết.
-- Theo dõi dữ liệu lệnh đặt/lệnh khớp/lịch sử tiền.
-- Kích hoạt khớp lệnh định kỳ ATO/ATC.
-- Backup/restore database và restore theo thời điểm.
+- Admin SQL users/logins and investor/staff lists.
+- Manage stocks, list/delist stocks.
+- Monitor order/matching/transaction history data.
+- Trigger ATO/ATC periodic matching.
+- Database backup/restore and point-in-time recovery.
 
-## 9. Socket realtime bảng giá
+## 9. Price Board Realtime Socket
 
 - File: `src/socket/priceBoardSocket.js`
-- Event:
-  - Client gửi `auth` với `username/password`
-  - Server emit `bangGiaUpdate`
-  - Client có thể gọi `requestPriceBoard`
-- Server đang cập nhật định kỳ mỗi `5s` bằng SP `sp_LayBangGiaTrucTuyen`.
+- Events:
+  - Client sends `auth` with `username/password`
+  - Server emits `bangGiaUpdate`
+  - Client can call `requestPriceBoard`
+- The server updates periodically every `5s` using the `sp_LayBangGiaTrucTuyen` SP.
 
-## 10. Một số lưu ý kỹ thuật
+## 10. Technical Notes
 
-- `config/db.js` tạo connection pool theo từng cặp `username:password`.
-- Có `graceful shutdown` để đóng toàn bộ pool khi tắt app.
-- Service có xử lý `trim()` cho dữ liệu kiểu `NCHAR` trả về từ SQL Server.
-- Một số chức năng undo/redo hiện lưu bằng stack trong RAM, không bền vững khi restart server.
+- `config/db.js` creates a connection pool for each `username:password` pair.
+- Includes `graceful shutdown` to close all pools when the app stops.
+- Services handle `trim()` for `NCHAR` types returned from SQL Server.
+- Some undo/redo functions are currently stored using an in-RAM stack, not persistent after server restart.
 
-## 11. Bảo mật và khuyến nghị
+## 11. Security and Recommendations
 
-Project phù hợp demo học thuật/đồ án. Khi triển khai thực tế nên cải thiện:
+This project is suitable for academic/project demos. For production deployment:
 
-1. Không đưa password SQL user vào JWT payload.
-2. Hạn chế log toàn bộ request headers/body ở production.
-3. Bật HTTPS và cấu hình `secure cookie`.
-4. Áp dụng rotate secret, audit quyền SQL, và tách tài khoản service account.
+1. Do not include SQL user passwords in JWT payload.
+2. Limit logging of full request headers/body in production.
+3. Enable HTTPS and configure `secure cookies`.
+4. Apply secret rotation, audit SQL permissions, and use a separate service account.
 
-## 12. Tài liệu script trong repo
+## 12. Script Documentation in Repo
 
-- `QL_GiaoDichCoPhieu.sql`: schema bảng dữ liệu chính.
-- `full.sql`: trigger + SP nghiệp vụ khớp lệnh.
-- `sp_trg_LO.sql`: phiên bản SP/trigger chuyên cho luồng LO/khớp liên tục.
-- `full cũ chạy ngon.sql`: bản script cũ để tham chiếu.
+- `QL_GiaoDichCoPhieu.sql`: main data table schema.
+- `full.sql`: matching business triggers + SPs.
+- `sp_trg_LO.sql`: SPs/triggers specialized for LO/continuous matching flow.
+- `full cũ chạy ngon.sql`: old script version for reference.
